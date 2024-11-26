@@ -39,7 +39,7 @@ one for a `global` vault-id, and one for a `personal` vault-id, you can add this
 vault_identity_list = global@/path/to/ansible_vault_keyring, personal@/path/to/ansible_vault_keyring
 ```
 
-If like me you install with [uv](https://github.com/astral-sh/uv/), you will find the binary in whatever b[bin directory](https://docs.astral.sh/uv/concepts/tools/#the-bin-directory) it uses, and you should refer to that uv documentation to find the path to the standalone executable. For me this is `~/.local/bin/ansible-vault-keyring`, and I have `~/.local/bin` in my `PATH` environment variable.
+If like me you install with [uv](https://github.com/astral-sh/uv/), you will find the binary in whatever [bin directory](https://docs.astral.sh/uv/concepts/tools/#the-bin-directory) it uses, and you should refer to that uv documentation to find the path to the standalone executable. For me this is `~/.local/bin/ansible-vault-keyring`, and I have `~/.local/bin` in my `PATH` environment variable.
 
 Now when a password is needed by ansible, it will invoke the `ansible-vault-keyring` tool to get the password from the keyring.
 

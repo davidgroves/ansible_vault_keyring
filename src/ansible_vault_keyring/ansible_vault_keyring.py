@@ -1,3 +1,7 @@
+"""ansible-vault-keyring
+A simple tool to get and set passwords for ansible vaults using the system keyring.
+"""
+
 import enum
 import getpass
 import logging
@@ -14,12 +18,16 @@ logger.addHandler(console_handler)
 
 
 class ReturnCodes(enum.IntEnum):
+    """Return codes for the program.
+    """
     OK = 0
     MISMATCHED_PASSWORDS = 1
     KEYNAME_UNKNOWN = 2
 
 
 class DebugLevel(enum.IntEnum):
+    """Debug levels, that map to logging module loglevels
+    """
     DEBUG = logging.DEBUG
     INFO = logging.INFO
     WARNING = logging.WARNING
@@ -28,6 +36,7 @@ class DebugLevel(enum.IntEnum):
 
 
 class Args(tap.TypedArgs):
+    """The CLI Arguments for the program"""
     vault_id: str = tap.arg(
         help="Get/set a vault password with this id from the users keyring"
     )
@@ -36,7 +45,6 @@ class Args(tap.TypedArgs):
         auto_default_help=True,
         default=DebugLevel.CRITICAL,
     )
-    keyname: str = tap.arg(help="The keyname to use for the keyring", default="ansible")
     set: bool = tap.arg(help="Set the password instead of getting it", default=False)
 
 
@@ -66,35 +74,9 @@ def get_username(args: Args, config: acm.ConfigManager) -> str:
         return getpass.getuser()
 
 
-def get_keyname(args: Args, config: acm.ConfigManager) -> str:
-    """Get the keyname from these sources in order.
-
-    1. The --keyname arg
-    2. The ansible.cfg file
-    3. The default keyname of "ansible"
-
-    Args:
-        args (Args): The command line arguments.
-        config (acm.ConfigManager): For the ansible.cfg results.
-
-    Returns:
-        str: The keyname to use for the keyring.
-    """
-    if args.keyname:
-        return args.keyname
-
-    # Don't like using the private method here, but it's the only way to get
-    # the config file parser.
-    # Looks like there is partial support for yaml config files in the
-    # ansible.config.manager.ConfigManager class.
-    ini_cfg_value = acm.get_ini_config_value(
-        config._parsers[config._config_file],
-        dict(section="vault", key="keyname"),
-    )
-    if ini_cfg_value:
-        return ini_cfg_value
-    else:
-        return "ansible"
+def get_keyname(vault_id: str) -> str:
+    """Makes the keyname"""
+    return f"ansible_vault_keyring_{vault_id}"
 
 
 def validate_passwords_match(password1: str, password2: str) -> bool:
@@ -110,7 +92,7 @@ def validate_passwords_match(password1: str, password2: str) -> bool:
     return password1 == password2
 
 
-def set_password_in_keyring(args: Args, username: str, keyname: str) -> None:
+def set_password_in_keyring(username: str, keyname: str) -> None:
     """Sets the password in the system keyring.
 
     Args:
@@ -148,24 +130,28 @@ def get_password_from_keyring(username: str, keyname: str) -> str:
 
 
 def runner(args: Args) -> None:
+    """The main function.
+    """
     logger.setLevel(args.debug_level.value)
-    logger.debug(f"Running with args: {args}")
+    logger.debug("Running with args: %s", args)
     # ConfigManager tries to load values from ansible.cfg ini files, using ansible
     # rules for finding the config file.
     config_manager = acm.ConfigManager()
     username = get_username(args, config_manager)
-    logger.debug(f"Username: {username}")
-    keyname = get_keyname(args, config_manager)
-    logger.debug(f"Keyname: {keyname}")
+    logger.debug("Username: %s", username)
+    keyname = get_keyname(args.vault_id)
+    logger.debug("Keyname: %s", keyname)
 
     if args.set:
-        set_password_in_keyring(args, username, keyname)
+        set_password_in_keyring(username, keyname)
     else:
         password = get_password_from_keyring(username, keyname)
         sys.stdout.write(f"{password}\n")
 
 
 def main() -> None:
+    """The main function. Just invokes the runner function.
+    """
     tap.Parser(Args).bind(runner).run()
 
 
